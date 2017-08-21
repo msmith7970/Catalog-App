@@ -1,0 +1,127 @@
+{% extends "main.html" %}
+{% block content %}
+{% include "header.html" %}
+<div class="row divider green">
+	<div class="col-md-12"></div>
+</div>
+<div class="row banner menu">
+	<div class="col-md-11 col-md-offset-1 padding-none">
+		<h1>{{ Categories }}
+		<figure class="creator">
+			<img src="{{ url_for('static', filename='blank_user.gif') }}">
+			<figcaption>Menu creator's name goes here</figcaption>
+		</figure>
+		</h1>
+
+	</div>
+</div>
+
+<div class = 'flash'>
+	{% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul>
+      {% for message in messages %}
+          <li> <strong> {{ message }} </strong> </li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+
+	<br>
+
+	<div class="col-md-12 list-items">
+		<div class="col-md-3 list-header list">
+			<a href="{{url_for('newCategory')}}">Add Category</a>
+		</div>
+		<div class="col-md-9 list-header list">
+			<a href="{{url_for('newItem')}}">Add items</a>
+		</div>
+	</div>
+
+	<br>
+
+	<div class="col-md-12 list-items">
+		<!--  Categories and Lastest Items Headers  -->
+
+		<div class="col-md-3 list-header">
+			<div class="list">
+				<h2>Categories</h2>
+			</div>
+		</div>
+
+		<div class="col-md-9 list-header">
+			<div class="list">
+				<h2>Latest Items</h2>
+			</div>
+		</div>
+	</div>
+
+			<!--  Categories and Latest Items Lists  -->
+			<!--  Categoies List  -->
+
+	{{category_name}}
+		<div class="col-md-12 list-items">
+			<div class="two-column">
+				<div class="col-md-3">
+					<div class="list">
+							{% for category in categories %}
+								<a href = "{{url_for('showCategoryItems', category_name = category.name)}}">
+									{{category.name}}
+								</a>
+							<br>
+							{% endfor %}
+							<br>
+					</div>
+				</div>
+		    	<!--  Latest Items List  -->
+    		<div class="col-md-9">
+    			<div class="list">
+    				{% for item in items %}
+    					<a href = "{{url_for('showItemDescription', category_name = item.category_name, item_name=item.name)}}">
+    						{{item.name}} ({{item.category_name}})
+    				<br>
+    				{% endfor %}
+    				<br>
+    			</div>
+    		</div>
+		    <br>
+			</div>
+		</div>
+
+
+
+</div>
+	<div class="row padding-top padding-bottom">
+		<div class="col-md-1"></div>
+		<div class="col-md-11 padding-none">
+			<a href="{{url_for('editCategory', category_name = category_name )}}">
+				<button class="btn btn-default" id="new-menu-item">
+					<span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>Edit Category
+				</button>
+			</a>
+			<a href="{{url_for('newItem', category_name = category_name )}}">
+				<button class="btn btn-default" id="new-menu-item">
+					<span class="glyphicon glyphicon-glass" aria-hidden="true"></span>Add Category Item
+				</button>
+			</a>
+						<a href="{{url_for('deleteItem', category_name=category_name)}}">
+				<button class="btn btn-default delete" id="delete-restaurant">
+					<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>Delete Category Item
+				</button>
+			</a>
+		</div>
+		<div class="col-md-7"></div>
+	</div>
+
+{% if items !=[] %}
+	<div class="row">
+		<div class="col-md-1"></div>
+		<div class="col-md-3">
+			<h2>Items</h2>
+				{% for i in items %}
+					<h3>{{i.name}}</h3>
+				{% endfor %}
+{% endif %}
+
+{% endblock %}

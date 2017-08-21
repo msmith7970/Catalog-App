@@ -1,0 +1,42 @@
+{% extends "main.html" %}
+{% block content %}
+{% include "header.html" %}
+
+<div class="row divider green">
+	<div class="col-md-12"></div>
+</div>
+<div class="row banner menu">
+	<div class="col-md-11 col-md-offset-1 padding-none">
+		<h1>Delete Categories</h1>
+	</div>
+</div>
+
+
+<form action="{{ url_for('deleteCategory')}}" method = 'post'>
+
+	<div class="">
+		<br><br>
+		<label>Select the Category you wish to Delete from the list below:</label>
+		<br>
+		<br>
+		<label for="category">Available Categories:</label>
+		<select class="" name="select">
+			{% for category in categories %}
+				<Option name="select" value="{{category.name}}">{{category.name}}</option>
+			{% endfor %}
+		</select>
+
+	</div>
+	<br>
+	<button type="submit" name="submit" value="save" class="btn btn-default" id="submit">
+		<span class="glyphicon glyphicon-ok" aria-hidden="true"></span>Save
+	</button>
+
+	<button type="submit" name="submit" value="cancel" class="btn btn-default"  >
+		<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Cancel
+	</button>
+
+
+</form>
+
+{% endblock %}

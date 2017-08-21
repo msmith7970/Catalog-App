@@ -1,0 +1,66 @@
+{% extends "main.html" %}
+{% block content %}
+{% include "header.html" %}
+
+
+<div class = 'flash'>
+	{% with messages = get_flashed_messages() %}
+	  {% if messages %}
+	    <ul>
+	      {% for message in messages %}
+	        <li> <strong> {{ message }} </strong> </li>
+	      {% endfor %}
+	    </ul>
+	  {% endif %}
+  {% endwith %}
+</div>
+
+<div class="row divider green">
+	<div class="col-md-12"></div>
+</div>
+<div class="row banner menu">
+	<div class="col-md-11 col-md-offset-1 padding-none">
+		<h1>Edit Categories</h1>
+	</div>
+</div>
+
+
+<div class="row">
+	<div class="col-md-6 col-md-offset-1 padding-top">
+
+		<form action="{{ url_for('editCategory')}}" method = "post">
+
+			<div class="">
+				<label>Select from the available list Categories you wish to edit from the list below:</label>
+				<br>
+				<br>
+				<label for="category">Available Categories:</label>
+				<select class="" name="select">
+					{% for category in categories %}
+						<Option name="select" value="{{category.name}}">{{category.name}}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<br>
+
+			<div class="form-group">
+				<label for="name">Enter your Change to this Category in the field below:</label>
+
+				<input type ="text" class="form-control" name="name">
+				<div class="padding-bottom"></div>
+
+				<button type="submit" name="submit" value="save" class="btn btn-default" id="submit">
+					<span class="glyphicon glyphicon-ok" aria-hidden="true"></span>Save
+				</button>
+
+				<button type="submit" name="submit" value="cancel" class="btn btn-default"  >
+					<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Cancel
+				</button>
+
+			</div>
+
+
+		</form>
+	</div>
+</div>
+{% endblock %}
