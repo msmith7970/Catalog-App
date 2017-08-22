@@ -11,6 +11,7 @@ import httplib2
 import json
 from flask import make_response, flash
 import requests
+from functools import wraps
 
 
 app = Flask(__name__)
@@ -29,9 +30,22 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
 
+# Decortor function to check for user login status.  If not logged in then
+# redirect user to login.
+#
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kargs):
+        if 'username' not in login_session:
+            return redirect('/login')
+        return f(*args, **kargs)
+    return decorated_function
+
+
 # Create Anti-forgery state token
 # Create a state token to prevent request forgery.
 # Store it in the session for later validation.
+#
 @app.route('/login')
 def showLogin():
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
@@ -86,7 +100,6 @@ def gconnect():
     if result['issued_to'] != CLIENT_ID:
         response = make_response(
             json.dumps("Token's client ID does not match app's."), 401)
-        print "Token's client ID does not match app's."
         response.headers['Content-Type'] = 'application/json'
         return response
 
@@ -199,8 +212,6 @@ def fbconnect():
     url = 'https://graph.facebook.com/v2.8/me?access_token=%s&fields=name,id,email' % token  # noqa
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
-    # print "url sent for API access:%s"% url
-    # print "API JSON result: %s" % result
     data = json.loads(result)
     login_session['provider'] = 'facebook'
     login_session['username'] = data["name"]
@@ -231,7 +242,9 @@ def fbconnect():
     output += '!</h1>'
     output += '<img src="'
     output += login_session['picture']
-    output += ' " style = "width: 300px; height: 300px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '  # noqa
+    output += ' " style = "width: 300px; height: 300px;border-radius: \
+                  150px;-webkit-border-radius: 150px;-moz-border-radius: \
+                  150px;"> '
 
     flash("Now logged in as %s" % login_session['username'])
     return output
@@ -277,7 +290,7 @@ def getUserID(email):
 
 
 # JSON APIs to view a Catalog Information
-@app.route('/catalog/<string:category_name>/category/JSON')
+@app.route('/catalog/<string:category_name>/items/JSON')
 def categoryItemsJSON(category_name):
     category = session.query(Category).filter_by(name=category_name).one()
     items = session.query(Item).filter_by(category_name=category_name).all()
@@ -317,8 +330,6 @@ def showCatalog():
     if 'username' not in login_session:
         picture = False
         user_name = False
-        print 'picture = '
-        print picture
         return render_template('publiccatalog.html',
                                categories=categories,
                                items=items,
@@ -326,9 +337,6 @@ def showCatalog():
                                user_name=user_name,
                                )
     else:
-        print 'user id name = ' + login_session['username']
-        print 'user id email = ' + login_session['email']
-        print 'user id picture = ' + login_session['picture']
         picture = login_session['picture']
         return render_template('catalog.html',
                                categories=categories,
@@ -340,11 +348,12 @@ def showCatalog():
 
 # Create a new Catalog Category.
 @app.route('/category/new/', methods=['GET', 'POST'])
+@login_required
 def newCategory():
     """This newCategory handler will add a new Category to the Database.  Wehn
     selected it will redirect a user not logged in to login in first.
 
-     The GET request will render the template for the new Category.
+    The GET request will render the template for the new Category.
 
     The POST request will take the input provided for a new category and if it
     already exists will redirect to the Catalog home page with a flash message.
@@ -353,9 +362,6 @@ def newCategory():
     message that the category was successfully added.
     """
 
-    # if user is not logged in then redirect them to login.
-    if 'username' not in login_session:
-        return redirect('/login')
     if request.method == 'POST':
         # Assign the name entered on the form to new_category_name
         new_category_name = request.form['name']
@@ -372,23 +378,14 @@ def newCategory():
             if category.name == new_category_name:
                 flash('The Category %s Already Exists, Please choose a new one'
                       % new_category_name)
-                print 'made 1'
                 return redirect(url_for('showCatalog'))
         except:
             # Add the new category
-            print ' login session user id = '
-            print login_session['user_id']
-            newCategory = (Category(name=request.form['name'],
-                           user_id=login_session['user_id']),
-                           )
+            newCategory = Category(name=request.form['name'],
+                                   user_id=login_session['user_id'])
             session.add(newCategory)
             flash('New Category %s Successfully Created' % newCategory.name)
             session.commit()
-            print ' 2nd login session user id = '
-            print login_session['user_id']
-            print '2nd user_id ='
-            print newCategory.user_id
-            print 'made 2'
             return redirect(url_for('showCatalog'))
     else:
         # Handle the GET request.
@@ -400,6 +397,7 @@ def newCategory():
 
 # Edit a category
 @app.route('/category/edit/', methods=['GET', 'POST'])
+@login_required
 def editCategory():
     """This editCategory handler will allow a user to edit an existing Category.
     When selected it will redirect a user not logged in to login in first.
@@ -413,8 +411,6 @@ def editCategory():
     message that the category was successfully added.
     """
 
-    if 'username' not in login_session:
-        return redirect('/login')
     categories = session.query(Category).order_by(asc(Category.name))
     if request.method == 'POST':
         # If the Save button on the form was selected, retrieve the
@@ -431,11 +427,11 @@ def editCategory():
                 # page.
                 #
                 if login_session['user_id'] != category_to_edit.user_id:
-                    return "<script>function myFunction() {alert('You are not \
-                    authorized to edit this category. Please create your own \
-                    category in order to edit.'); window.location= \
-                    '/catalog';}</script><body onload='myFunction()''>"
-
+                    return "<script>function myFunction() {alert('You are ' + \
+                        'not authorized to edit this category.  Please ' + \
+                        'create your own category in order to edit.'); \
+                        window.location='/catalog';}</script> \
+                        <body onload='myFunction()''>"
             if request.form['name']:
                 # If a value was typed in the form, first check to see if it
                 # exists and if it does, provide a flash message and go back
@@ -457,13 +453,17 @@ def editCategory():
                     session.commit
                     flash(('Category was Successfully edited from %s to %s'
                            % (category_name, edited_category)))
-                    print 'made it to flash message'
                     return redirect(url_for('showCatalog'))
             else:
                 # If the create of the category leave the field blank and hits
                 # the Save button then show the correspoding alert message and
                 # go back to the edit page.
-                return "<script>function myFunction() {alert('Category field was left blank.  Please enter a new value or hit Cancel below'); window.location='/category/edit/';}</script><body onload='myFunction()''>"  # noqa
+                #
+                return "<script>function myFunction() {alert('Category ' + \
+                    'field was left blank.  Please enter a new value or ' + \
+                    'hit Cancel below.'); \
+                    window.location='/category/edit/';}</script> \
+                    <body onload='myFunction()''>"
         else:
             # If Cancel was selected from the edit form, go back to home page.
             return redirect(url_for('showCatalog'))
@@ -478,6 +478,7 @@ def editCategory():
 
 # Delete a category
 @app.route('/category/delete/', methods=['GET', 'POST'])
+@login_required
 def deleteCategory():
     """This deleteCategory handler is used to delete a Category, when selected
     it will redirect a user not logged in to login in first.
@@ -492,9 +493,6 @@ def deleteCategory():
     the Cancel button is selected the user is returned back to the home page.
     """
 
-    print 'deleteCategory'
-    if 'username' not in login_session:
-        return redirect('/login')
     categories = session.query(Category).order_by(asc(Category.name))
     if request.method == 'POST':
         # Process when the Save button is selected
@@ -506,8 +504,13 @@ def deleteCategory():
             # Check user id, you must be original creator in order to edit it.
             # If the user is not the orginal creator send an alert otherwise
             # make the change in the database and go back to the home page.
+            #
             if login_session['user_id'] != category_to_delete.user_id:
-                return "<script>function myFunction() {alert('You are not authorized to delete this category. Please create your own category in order to be able to delete it.'); window.location='/catalog';}</script><body onload='myFunction()''>"  # noqa
+                return "<script>function myFunction() {alert('You are not ' + \
+                    'authorized to delete this category. Please create ' + \
+                    'your own category in order to be able to delete it.'); \
+                    window.location='/catalog';}</script> \
+                    <body onload='myFunction()''>"
             category_to_delete.name = category_name
             session.delete(category_to_delete)
             session.commit
@@ -567,6 +570,7 @@ def showCategoryItems(category_name):
 
 # Create a new item for a selected category (i.e category_name)
 @app.route('/catalog/item/new/', methods=['GET', 'POST'])
+@login_required
 def newItem():
     """This newItem handler will add a New Item to the Database.  When it is
     first selected it will redirect a user not logged in to login in first.
@@ -577,8 +581,6 @@ def newItem():
     and the Item Description fields and add it to the database.
     """
 
-    if 'username' not in login_session:
-        return redirect('/login')
     categories = session.query(Category).all()
     if request.method == 'POST':
         newItem = Item(name=request.form['name'],
@@ -603,6 +605,7 @@ def newItem():
 # Edit a Category item
 @app.route('/catalog/<string:category_name>/item/<string:item_name>/edit',
            methods=['GET', 'POST'])
+@login_required
 def editItem(category_name, item_name):
     """This editItem handler is used to edit an Item.  When selected, it
     will redirect a user not logged in to login in first.
@@ -617,13 +620,15 @@ def editItem(category_name, item_name):
     showItemDescription handler along with a successful flash message.
     """
 
-    if 'username' not in login_session:
-        return redirect('/login')
     editedItem = session.query(Item).filter_by(name=item_name).one()
     category = session.query(Category).filter_by(name=category_name).one()
     # Check to see if the logged in user is the original creator of the item.
     if login_session['user_id'] != editedItem.user_id:
-        return "<script>function myFunction() {alert('You are not authorized to edit items to this category. Please create your own item in order to edit the item.');window.location='/catalog';}</script><body onload='myFunction()''>"  # noqa
+        return "<script>function myFunction() {alert('You are not ' + \
+            'authorized to edit items to this category. Please create ' + \
+            'your own item in order to edit the item.'); \
+            window.location='/catalog';}</script> \
+            <body onload='myFunction()''>"
     if request.method == 'POST':
         # When the Save button is selected
         if request.form['button'] == "save":
@@ -659,6 +664,7 @@ def editItem(category_name, item_name):
 # Delete a menu item
 @app.route('/category/<string:category_name>/<string:item_name>/delete',
            methods=['GET', 'POST'])
+@login_required
 def deleteItem(category_name, item_name):
     """This deleteItem handler is used to delete an Item, when selected
     it will redirect a user not logged in to login in first.
@@ -673,8 +679,6 @@ def deleteItem(category_name, item_name):
     and display a flash message.
     """
 
-    if 'username' not in login_session:
-        return redirect('/login')
     category = (session.query(Category).
                 filter_by(name=category_name).
                 one())
@@ -682,7 +686,11 @@ def deleteItem(category_name, item_name):
                     filter_by(category_name=category_name, name=item_name).
                     one())
     if login_session['user_id'] != itemToDelete.user_id:
-        return "<script>function myFunction() {alert('You are not authorized to Delete Items to this category. Please create your own item in order to delete items.');window.location='/catalog';}</script><body onload='myFunction()''>"  # noqa
+        return "<script>function myFunction() {alert('You are not ' + \
+            'authorized to Delete Items to this category. Please create ' + \
+            'your own item in order to delete items.'); \
+            window.location='/catalog';}</script> \
+            <body onload='myFunction()''>"
     if request.method == 'POST':
         # Cancel button was selected
         if request.form['submit'] == "Cancel":
@@ -778,4 +786,4 @@ def disconnect():
 if __name__ == '__main__':
     app.secret_key = 'super_secret_key'
     app.debug = True
-app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=8000)
