@@ -1,0 +1,10 @@
+# ignore these directories
+git/
+venv/
+
+# ignore these files
+*.pyc
+*.py.save
+*.db
+
+

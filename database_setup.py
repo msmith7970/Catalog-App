@@ -19,10 +19,11 @@ class Category(Base):
     __tablename__ = 'category'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(250), nullable=False)
+    name = Column(String(250), nullable=False, unique=True)
     user_id = Column(Integer, ForeignKey('user.id'))
     user = relationship(User)
     item = relationship('Item', cascade='all, delete-orphan')
+    # __table_args__ = (UniqueConstraint('name'))
 
     @property
     def serialize(self):
@@ -60,6 +61,6 @@ class Item(Base):
         }
 
 
-engine = create_engine('sqlite:///catalog1.db')
+engine = create_engine('postgresql://catalog:catalog@localhost/catalog')
 
 Base.metadata.create_all(engine)

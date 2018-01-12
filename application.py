@@ -12,25 +12,25 @@ import json
 from flask import make_response, flash
 import requests
 from functools import wraps
-
+from httplib import ResponseNotReady
 
 app = Flask(__name__)
 
 
 # Use Google Account Info for secure connection
 CLIENT_ID = json.loads(
-    open('client_secrets.json', 'r').read())['web']['client_id']
+    open(r'/var/www/html/catalog/catalog/client_secrets.json', 'r').read())['web']['client_id']
 
 
 # Connect to Database and create database session
-engine = create_engine('sqlite:///catalog1.db')
+engine = create_engine('postgresql://catalog:catalog@localhost/catalog')
 Base.metadata.bind = engine
 
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
 
-# Decortor function to check for user login status.  If not logged in then
+# Decorator function to check for user login status.  If not logged in then
 # redirect user to login.
 #
 def login_required(f):
@@ -64,10 +64,9 @@ def gconnect():
         return response
     # Obtain authorization code
     code = request.data
-
     try:
         # Upgrade the authorization code into a credentials object
-        oauth_flow = flow_from_clientsecrets('client_secrets.json', scope='')
+        oauth_flow = flow_from_clientsecrets(r'/var/www/html/catalog/catalog/client_secrets.json', scope='')
         oauth_flow.redirect_uri = 'postmessage'
         credentials = oauth_flow.step2_exchange(code)
     except FlowExchangeError:
@@ -75,6 +74,8 @@ def gconnect():
             json.dumps('Failed to upgrade the authorization code.'), 401)
         response.headers['Content-Type'] = 'application/json'
         return response
+    except ResponseNotReady:
+	credentials = oauth_flow.step2_exchange(code)
 
     # Check that the access token is valid.
     access_token = credentials.access_token
@@ -190,10 +191,10 @@ def fbconnect():
 # access_token?grant_type=fb_exchange_token&client_id={app-
 # id}&client_secret={app_secret}&fb_exchange_token={short-lived-token}
 #
-    app_id = json.loads(open('fb_client_secrets.json', 'r').read())[
+    app_id = json.loads(open(r'/var/www/html/catalog/catalog/fb_client_secrets.json', 'r').read())[
         'web']['app_id']
     app_secret = json.loads(
-        open('fb_client_secrets.json', 'r').read())['web']['app_secret']
+        open(r'/var/www/html/catalog/catalog/fb_client_secrets.json', 'r').read())['web']['app_secret']
     url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=%s&client_secret=%s&fb_exchange_token=%s' % (app_id, app_secret, access_token)  # noqa
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
@@ -786,4 +787,5 @@ def disconnect():
 if __name__ == '__main__':
     app.secret_key = 'super_secret_key'
     app.debug = True
-    app.run(host='0.0.0.0', port=8000)
+#    app.run(host='0.0.0.0', port=8000
+    app.run()
